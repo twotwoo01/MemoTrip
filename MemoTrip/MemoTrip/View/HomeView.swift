@@ -19,6 +19,8 @@ struct HomeView: View {
     @State private var selectedMemoID: UUID? = nil
     @State private var memoWrite = false
     @State private var selectedDate = Date()
+    @State private var memoDelete: Memo? = nil
+    @State private var deleteAlert = false
 
     var groupedMemos: [String: [Memo]] {
         Dictionary(grouping: memos) { memo in
@@ -49,6 +51,14 @@ struct HomeView: View {
                                                     .scaleEffect(phase.isIdentity ? 1.0 : 0.85)
                                                     .opacity(phase.isIdentity ? 1.0 : 0.6)
                                             }
+                                            .contextMenu {
+                                                Button(role: .destructive) {
+                                                    memoDelete = memo
+                                                    deleteAlert = true
+                                                } label: {
+                                                    Label("삭제", systemImage: "trash")
+                                                }
+                                            }
                                     }
                                 }
                                 .scrollTargetLayout()
@@ -73,6 +83,12 @@ struct HomeView: View {
             }
             .sheet(isPresented: $memoWrite) {
                 MemoWriteView()
+            }
+            .alert("메모를 삭제하시겠습니까?", isPresented: $deleteAlert, presenting: memoDelete) { memo in
+                Button("삭제", role: .destructive) {
+                    deleteMemo(memo)
+                }
+                Button("취소", role: .cancel) { }
             }
         }
     }
@@ -107,8 +123,18 @@ struct HomeView: View {
             selectedMemoID = memo.id
         }
     }
+
+    private func deleteMemo(_ memo: Memo) {
+        viewContext.delete(memo)
+        do {
+            try viewContext.save()
+        } catch {
+            print("메모 삭제 실패: \(error.localizedDescription)")
+        }
+    }
 }
 
 #Preview {
     HomeView()
+        .environment(\.managedObjectContext, PersistenceController.shared.container.viewContext)
 }
